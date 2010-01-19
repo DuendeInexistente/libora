@@ -27,6 +27,7 @@
 #include <png.h>
 
 #include "../zip/unzip.h"
+#include "../zip/zip.h"
 #include "layers.h"
 
 void _ora_png_error_fn(png_structp png_ptr, png_const_charp error_msg)
@@ -35,7 +36,7 @@ void _ora_png_error_fn(png_structp png_ptr, png_const_charp error_msg)
 
     document = (ora_document*) png_get_error_ptr(png_ptr);
 
-    ORA_SET_ERROR(document, ORA_ERROR_READ);
+    ORA_SET_ERROR(document, document->magic == _ORA_MAGIC_READ ? ORA_ERROR_WRITE : ORA_ERROR_READ);
     ORA_DEBUG("PNG read: %s \n", error_msg);
 }
 
@@ -57,22 +58,21 @@ void _ora_png_read_data(png_structp png_ptr, png_bytep data, png_size_t length)
 
 
 }
-/*
+
 void _ora_png_write_data(png_structp png_ptr, png_bytep data, png_size_t length)
 {
+    zipFile zip;
 
+    zip = (zipFile) png_get_io_ptr(png_ptr);
 
+    zipWriteInFileInZip (zip, data, length);
 }
 
 void _ora_png_flush_data(png_structp png_ptr)
 {
-
-
-
-
-
+    //TODO: flushing
 }
-*/
+
 int ora_read_raster(ora_document* document, unzFile zip, ubyte** data, int* width, int* height, int* format, progress_callback callback)
 {
     png_structp png_ptr;
@@ -103,13 +103,17 @@ png_set_sig_bytes(png_ptr, number);
 */
     png_ptr = png_create_read_struct
        (PNG_LIBPNG_VER_STRING, (png_voidp)document, _ora_png_error_fn, _ora_png_warning_fn);
-    if (!png_ptr)
+    if (!png_ptr) 
+    {
+        ORA_SET_ERROR(document, ORA_ERROR_PNGLIB);
         return ORA_ERROR;
+    }
 
     info_ptr = png_create_info_struct(png_ptr);
     if (!info_ptr)
     {
         png_destroy_read_struct(&png_ptr, (png_infopp)NULL, (png_infopp)NULL);
+        ORA_SET_ERROR(document, ORA_ERROR_PNGLIB);
         return ORA_ERROR;
     }
 
@@ -117,6 +121,7 @@ png_set_sig_bytes(png_ptr, number);
     if (!end_info)
     {
         png_destroy_read_struct(&png_ptr, &info_ptr, (png_infopp)NULL);
+        ORA_SET_ERROR(document, ORA_ERROR_PNGLIB);
         return ORA_ERROR;
     }
 
@@ -124,6 +129,7 @@ png_set_sig_bytes(png_ptr, number);
     {
         png_destroy_read_struct(&png_ptr, &info_ptr,
            (png_infopp)NULL);
+        ORA_SET_ERROR(document, ORA_ERROR_PNGLIB);
         return ORA_ERROR;
     }
 
@@ -140,6 +146,7 @@ png_set_sig_bytes(png_ptr, number);
 
         png_destroy_read_struct(&png_ptr, &info_ptr,
            (png_infopp)NULL);
+        ORA_SET_ERROR(document, ORA_ERROR_READ);
         return ORA_ERROR;
     }
 
@@ -148,8 +155,6 @@ png_set_sig_bytes(png_ptr, number);
     *height = png_get_image_height(png_ptr, info_ptr);
     bit_depth = png_get_bit_depth(png_ptr, info_ptr);
     color_type = png_get_color_type(png_ptr,info_ptr);
-
-    printf("colortype: %d \n", color_type);
 
     if (color_type == PNG_COLOR_TYPE_PALETTE)
         png_set_palette_to_rgb(png_ptr);
@@ -195,8 +200,6 @@ png_set_sig_bytes(png_ptr, number);
     if (document->error)
     {
         free(image_data);
-
-
         return ORA_ERROR;
     }
 
@@ -207,5 +210,83 @@ png_set_sig_bytes(png_ptr, number);
 }
 
 
+int ora_write_raster(ora_document* document, zipFile zip, ubyte* data, int width, int height, int format, progress_callback callback)
+{
+    png_structp png_ptr;
+    png_infop info_ptr;
+    int line_size;
+    int current_line;
+    int current_progress = 0, p;
 
+    if (!(format & ORA_FORMAT_RASTER) || !data)
+        return ORA_ERROR;
+
+    png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, (png_voidp)document, _ora_png_error_fn, _ora_png_warning_fn);
+    if (!png_ptr) 
+    {
+        ORA_SET_ERROR(document, ORA_ERROR_PNGLIB);
+        return ORA_ERROR;
+    }
+
+    info_ptr = png_create_info_struct(png_ptr);
+    if (!info_ptr)
+    {
+        png_destroy_write_struct(&png_ptr, (png_infopp)NULL);
+        ORA_SET_ERROR(document, ORA_ERROR_PNGLIB);
+        return ORA_ERROR;
+    }
+
+    if (setjmp(png_jmpbuf(png_ptr)))
+    {
+        png_destroy_write_struct(&png_ptr, &info_ptr);
+        ORA_SET_ERROR(document, ORA_ERROR_PNGLIB);
+        return ORA_ERROR;
+    }
+
+    png_set_write_fn(png_ptr, zip, _ora_png_write_data, _ora_png_flush_data);
+
+    // no need for slow compression, because everything gets compressed with the
+    // same algorithm anyway
+    png_set_compression_level(png_ptr, Z_BEST_SPEED); // Z_NO_COMPRESSION
+
+    png_set_compression_mem_level(png_ptr, 8);
+    png_set_compression_strategy(png_ptr, Z_DEFAULT_STRATEGY);
+    png_set_compression_window_bits(png_ptr, 15);
+    png_set_compression_method(png_ptr, 8);
+    png_set_compression_buffer_size(png_ptr, 8192);
+
+    png_set_IHDR(png_ptr, info_ptr, width, height, (format & ORA_FORMAT_DOUBLE ? 16 : 8),
+        (format & ORA_FORMAT_ALPHA ? PNG_COLOR_TYPE_RGB_ALPHA : PNG_COLOR_TYPE_RGB),
+         PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+
+    png_write_info(png_ptr, info_ptr);
+
+    png_set_flush(png_ptr, 20);
+
+    line_size = width * (format & ORA_FORMAT_DOUBLE ? 2 : 1) * (format & ORA_FORMAT_ALPHA ? 4 : 3);
+
+    for (current_line = 0; current_line < height; current_line++)
+    {
+        png_write_row(png_ptr, data + line_size * current_line);
+
+        if (callback)
+        {
+            p = (current_line * 100) / (height-1);
+            if (current_progress != p) 
+            {
+                callback(p);
+                current_progress = p;
+            }
+        }
+
+
+        if (document->error)
+            break;
+    }
+
+    png_write_end(png_ptr, info_ptr);
+    png_destroy_write_struct(&png_ptr, &info_ptr);
+
+    return ORA_OK;
+}
 

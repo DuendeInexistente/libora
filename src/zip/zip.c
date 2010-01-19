@@ -684,12 +684,11 @@ extern zipFile ZEXPORT zipOpen (pathname, append)
     return zipOpen2(pathname,append,NULL,NULL);
 }
 
-extern int ZEXPORT zipOpenNewFileInZip3 (file, filename, zipfi,
+extern int ZEXPORT zipOpenNewFileInZip2 (file, filename, zipfi,
                                          extrafield_local, size_extrafield_local,
                                          extrafield_global, size_extrafield_global,
                                          comment, method, level, raw,
-                                         windowBits, memLevel, strategy,
-                                         password, crcForCrypting)
+                                         windowBits, memLevel, strategy)
     zipFile file;
     const char* filename;
     const zip_fileinfo* zipfi;
@@ -704,8 +703,6 @@ extern int ZEXPORT zipOpenNewFileInZip3 (file, filename, zipfi,
     int windowBits;
     int memLevel;
     int strategy;
-    const char* password;
-    uLong crcForCrypting;
 {
     zip_internal* zi;
     uInt size_filename;
@@ -713,10 +710,6 @@ extern int ZEXPORT zipOpenNewFileInZip3 (file, filename, zipfi,
     uInt i;
     int err = ZIP_OK;
 
-#    ifdef NOCRYPT
-    if (password != NULL)
-        return ZIP_PARAMERROR;
-#    endif
 
     if (file == NULL)
         return ZIP_PARAMERROR;
@@ -759,8 +752,6 @@ extern int ZEXPORT zipOpenNewFileInZip3 (file, filename, zipfi,
       zi->ci.flag |= 4;
     if ((level==1))
       zi->ci.flag |= 6;
-    if (password != NULL)
-      zi->ci.flag |= 1;
 
     zi->ci.crc32 = 0;
     zi->ci.method = method;
@@ -870,51 +861,11 @@ extern int ZEXPORT zipOpenNewFileInZip3 (file, filename, zipfi,
         if (err==Z_OK)
             zi->ci.stream_initialised = 1;
     }
-#    ifndef NOCRYPT
-    zi->ci.crypt_header_size = 0;
-    if ((err==Z_OK) && (password != NULL))
-    {
-        unsigned char bufHead[RAND_HEAD_LEN];
-        unsigned int sizeHead;
-        zi->ci.encrypt = 1;
-        zi->ci.pcrc_32_tab = get_crc_table();
-        /*init_keys(password,zi->ci.keys,zi->ci.pcrc_32_tab);*/
 
-        sizeHead=crypthead(password,bufHead,RAND_HEAD_LEN,zi->ci.keys,zi->ci.pcrc_32_tab,crcForCrypting);
-        zi->ci.crypt_header_size = sizeHead;
-
-        if (ZWRITE(zi->z_filefunc,zi->filestream,bufHead,sizeHead) != sizeHead)
-                err = ZIP_ERRNO;
-    }
-#    endif
 
     if (err==Z_OK)
         zi->in_opened_file_inzip = 1;
     return err;
-}
-
-extern int ZEXPORT zipOpenNewFileInZip2(file, filename, zipfi,
-                                        extrafield_local, size_extrafield_local,
-                                        extrafield_global, size_extrafield_global,
-                                        comment, method, level, raw)
-    zipFile file;
-    const char* filename;
-    const zip_fileinfo* zipfi;
-    const void* extrafield_local;
-    uInt size_extrafield_local;
-    const void* extrafield_global;
-    uInt size_extrafield_global;
-    const char* comment;
-    int method;
-    int level;
-    int raw;
-{
-    return zipOpenNewFileInZip3 (file, filename, zipfi,
-                                 extrafield_local, size_extrafield_local,
-                                 extrafield_global, size_extrafield_global,
-                                 comment, method, level, raw,
-                                 -MAX_WBITS, DEF_MEM_LEVEL, Z_DEFAULT_STRATEGY,
-                                 NULL, 0);
 }
 
 extern int ZEXPORT zipOpenNewFileInZip (file, filename, zipfi,
@@ -935,7 +886,7 @@ extern int ZEXPORT zipOpenNewFileInZip (file, filename, zipfi,
     return zipOpenNewFileInZip2 (file, filename, zipfi,
                                  extrafield_local, size_extrafield_local,
                                  extrafield_global, size_extrafield_global,
-                                 comment, method, level, 0);
+                                 comment, method, level, 0, -MAX_WBITS, DEF_MEM_LEVEL, Z_DEFAULT_STRATEGY);
 }
 
 local int zipFlushWriteBuffer(zi)
@@ -943,16 +894,6 @@ local int zipFlushWriteBuffer(zi)
 {
     int err=ZIP_OK;
 
-    if (zi->ci.encrypt != 0)
-    {
-#ifndef NOCRYPT
-        uInt i;
-        int t;
-        for (i=0;i<zi->ci.pos_in_buffered_data;i++)
-            zi->ci.buffered_data[i] = zencode(zi->ci.keys, zi->ci.pcrc_32_tab,
-                                       zi->ci.buffered_data[i],t);
-#endif
-    }
     if (ZWRITE(zi->z_filefunc,zi->filestream,zi->ci.buffered_data,zi->ci.pos_in_buffered_data)
                                                                     !=zi->ci.pos_in_buffered_data)
       err = ZIP_ERRNO;

@@ -161,28 +161,10 @@ extern int ZEXPORT zipOpenNewFileInZip2 OF((zipFile file,
                                             const char* comment,
                                             int method,
                                             int level,
-                                            int raw));
-
-/*
-  Same than zipOpenNewFileInZip, except if raw=1, we write raw file
- */
-
-extern int ZEXPORT zipOpenNewFileInZip3 OF((zipFile file,
-                                            const char* filename,
-                                            const zip_fileinfo* zipfi,
-                                            const void* extrafield_local,
-                                            uInt size_extrafield_local,
-                                            const void* extrafield_global,
-                                            uInt size_extrafield_global,
-                                            const char* comment,
-                                            int method,
-                                            int level,
                                             int raw,
                                             int windowBits,
                                             int memLevel,
-                                            int strategy,
-                                            const char* password,
-                                            uLong crcForCtypting));
+                                            int strategy));
 
 /*
   Same than zipOpenNewFileInZip2, except
@@ -208,7 +190,7 @@ extern int ZEXPORT zipCloseFileInZipRaw OF((zipFile file,
                                             uLong uncompressed_size,
                                             uLong crc32));
 /*
-  Close the current file in the zipfile, for fiel opened with
+  Close the current file in the zipfile, for file opened with
     parameter raw=1 in zipOpenNewFileInZip2
   uncompressed_size and crc32 are value for the uncompressed size
 */

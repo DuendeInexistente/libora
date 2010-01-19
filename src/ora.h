@@ -39,11 +39,14 @@
 #define ORA_ERROR_CORRUPTED 2
 #define ORA_ERROR_READ 3
 #define ORA_ERROR_MISSING 3
+#define ORA_ERROR_PNGLIB 4
+#define ORA_ERROR_WRITE 5
 
 #define ORA_ERROR_MODE 10
 #define ORA_ERROR_STACK 11
 #define ORA_ERROR_STACK_END 12
 #define ORA_ERROR_STACK_POSITION 13
+//#define ORA_ERROR_STACK_ 10
 
 #define ORA_TYPE_STACK 1
 #define ORA_TYPE_LAYER 2
@@ -62,11 +65,15 @@
 #define ORA_FORMAT_DOUBLE 256
 #define ORA_FORMAT_ALPHA 512
 
+typedef char ubyte;
+
 typedef void* ORA;
 
 typedef void (*progress_callback) (int progress);
 
-typedef char ubyte;
+typedef void (*tile_read_callback) (int x, int y, ubyte* data);
+
+typedef ubyte* (*tile_write_callback) (int x, int y);
 
 typedef struct _ora_rectangle
 {
@@ -88,10 +95,18 @@ extern int ora_stack_type(ORA ora);
 
 //extern int ora_read_thumbnail(ORA ora, ubyte** data, int* width, int* height, int* format, progress_callback callback);
 
-extern int ora_read_layer(ORA ora, ubyte** data, ora_rectangle* geometry, int* format, progress_callback callback);
+extern int ora_read_layer(ORA ora, ubyte** data, ora_rectangle* geometry, int* format, float* opacity, progress_callback callback);
 
 extern int ora_close(ORA ora);
 
+extern int ora_open_stack(ORA ora, const char* name, int x, int y);
+
+extern int ora_close_stack(ORA ora);
+
+extern int ora_write_layer(ORA ora, const char* name, ora_rectangle geometry, int format, float opacity, ubyte* data, progress_callback callback);
+/*
+extern int ora_write_tiles(ORA ora, const char* name, ora_rectangle geometry, int format, int tile_size, tile_write_callback tile_source, progress_callback callback);
+*/
 extern int ora_error(ORA ora);
 
 

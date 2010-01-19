@@ -22,7 +22,7 @@ IF (WIN32)
 ENDIF (WIN32)
 
 IF (UNIX)
-ADD_LIBRARY(ora SHARED ./src/ora.c ./src/zip/unzip.c ./src/zip/ioapi.c ./src/layers/layers.c)
+ADD_LIBRARY(ora SHARED ./src/ora.c ./src/internal.c ./src/zip/unzip.c ./src/zip/zip.c ./src/zip/ioapi.c ./src/layers/layers.c)
 ENDIF (UNIX)
 
 ADD_EXECUTABLE(oratool ./src/tool/oratool.c)

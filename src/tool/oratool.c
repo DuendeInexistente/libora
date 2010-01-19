@@ -21,6 +21,7 @@
  * Boston, MA  02110-1301, USA.
  */
 
+#include <time.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <png.h>
@@ -115,49 +116,77 @@ void tool_progress_callback(int progress)
     if (progress % 10 == 0)
         printf("%d ", progress);
 
-    if (progress == 100)
-        printf("\n");
-
     fflush(stdout);
 }
 
 
 int main( int argc, char** argv) { 
     char filename[256];
-    ORA ora;
+    ORA ora_in, ora_out;
     ubyte* image;
     int format;
     ora_rectangle geometry;
+    float opacity;
     int i;
+    long timer, total, read, write;
 
     if (argc < 2) {
         fprintf(stderr,"Enter a file name!\n");
         return -1;
     }
 
+    total = clock();
+    if (ora_open(argv[1], ORA_FILE_READ, &ora_in) != ORA_OK)
+        return -1;
 
-    if (ora_open(argv[1], ORA_FILE_READ, &ora) != ORA_OK)
+    if (ora_open("test.ora", ORA_FILE_WRITE, &ora_out) != ORA_OK)
         return -1;
 
     i = 0;
 
+    read = 0;
+    write = 0;
+
     while (1)
     {
         i++;
-        if (ora_stack_next(ora, ORA_NEXT_NO_STACK) > 0)
+        if (ora_stack_next(ora_in, ORA_NEXT_NO_STACK) > 0)
         {
-            printf("Reading layer: %d", i);
-            ora_read_layer(ora, &image, &geometry, &format, tool_progress_callback);
-            sprintf(filename, "layer%03d.png", i);
-            printf("Saving: %s", filename);
-            tool_write_png(filename, image, geometry.width, geometry.height, format, tool_progress_callback);
+            printf("Reading layer: %d - ", i);
+
+            timer = clock();
+            ora_read_layer(ora_in, &image, &geometry, &format, &opacity, tool_progress_callback);
+
+            timer = clock() - timer;
+            timer = timer > 0 ? timer : 0;
+            printf("\nDone (%ld ms)\n", ((timer) / (CLOCKS_PER_SEC / 1000)));
+            read += timer;
+
+            //sprintf(filename, "layer%03d.png", i);
+            //printf("Saving: %s", filename);
+            //tool_write_png(filename, image, geometry.width, geometry.height, format, tool_progress_callback);
+            printf("Writing layer: %d - ", i);
+
+            timer = clock();
+            ora_write_layer(ora_out, NULL, geometry, format, opacity, image, tool_progress_callback);
+
+            timer = clock() - timer;
+            timer = timer > 0 ? timer : 0;
+            printf("\nDone (%ld ms)\n", (timer / (CLOCKS_PER_SEC / 1000)));
+            write += timer;
+
             free(image);
-        } else break;
+        } else 
+            break;
     }
 
-    ora_close(ora);
+    ora_close(ora_in);
+    ora_close(ora_out);
 
-
+    total = clock() - total;
+    total = total > 0 ? total : 0;
+    printf("Total: %ld ms, Reading layers: %ld ms, Writing layers: %ld ms.\n", 
+            ((total) / (CLOCKS_PER_SEC / 1000)), ((read) / (CLOCKS_PER_SEC / 1000)), ((write) / (CLOCKS_PER_SEC / 1000)));
 
     return 0;
 }
