@@ -247,13 +247,36 @@ int ora_write_raster(ora_document* document, zipFile zip, ubyte* data, int width
 
     // no need for slow compression, because everything gets compressed with the
     // same algorithm anyway
-    png_set_compression_level(png_ptr, Z_NO_COMPRESSION); //Z_BEST_SPEED
 
-    png_set_compression_mem_level(png_ptr, 8);
-    png_set_compression_strategy(png_ptr, Z_DEFAULT_STRATEGY);
-    png_set_compression_window_bits(png_ptr, 15);
-    png_set_compression_method(png_ptr, 8);
-    png_set_compression_buffer_size(png_ptr, 8192);
+
+    png_set_compression_level(png_ptr, Z_NO_COMPRESSION); //Z_BEST_SPEED
+    //png_set_compression_level(png_ptr, Z_NO_COMPRESSION); // <-- slower (because of bigger memcpy, maybe?)
+
+    /* "The following functions are mainly for testing, but may be
+       useful in some cases, like if you need to write PNG files
+       extremely fast and are willing to give up some compression, [...]"
+
+       Description of the types can be found at http://en.wikipedia.org/wiki/Portable_Network_Graphics#Filtering
+
+    png_set_filter(png_ptr, 0,
+       PNG_FILTER_NONE  | PNG_FILTER_VALUE_NONE |
+       PNG_FILTER_SUB   | PNG_FILTER_VALUE_SUB  |
+       PNG_FILTER_UP    | PNG_FILTER_VALUE_UP   |
+       PNG_FILTER_AVE   | PNG_FILTER_VALUE_AVE  |
+       PNG_FILTER_PAETH | PNG_FILTER_VALUE_PAETH|
+       PNG_ALL_FILTERS);
+    */
+
+    // default (all filters enabled):                 1350ms, 3.4MB
+    //png_set_filter(png_ptr, 0, PNG_FILTER_NONE);  // 790ms, 3.8MB
+    //png_set_filter(png_ptr, 0, PNG_FILTER_PAETH); // 980ms, 3.5MB
+    png_set_filter(png_ptr, 0, PNG_FILTER_SUB);     // 760ms, 3.4MB
+
+    /* "The png_set_compression_*() functions interface to the zlib
+       compression library, and should mostly be ignored unless you
+       really know what you are doing. The only generally useful call
+       is png_set_compression_level() [...]"
+    */
 
     png_set_IHDR(png_ptr, info_ptr, width, height, (format & ORA_FORMAT_DOUBLE ? 16 : 8),
         (format & ORA_FORMAT_ALPHA ? PNG_COLOR_TYPE_RGB_ALPHA : PNG_COLOR_TYPE_RGB),
