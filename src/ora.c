@@ -24,10 +24,9 @@
 
 #include "ora.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <libxml/tree.h>
-#include <libxml/parser.h>
 #include <zlib.h>
 #include <time.h>
 
@@ -35,6 +34,7 @@
 #include "zip/unzip.h"
 #include "zip/zip.h"
 #include "layers/layers.h"
+#include "layers/stack.h"
 
 #define ORA_COMMENT "Created with libora"
 
@@ -46,8 +46,6 @@
 
 #define _BUFFER_LENGTH 256
 
-struct _ora_stack_node_d;
-
 typedef struct ora_document_read_d
 {
     char magic;
@@ -56,8 +54,8 @@ typedef struct ora_document_read_d
     int width;
     int height;
     unzFile file;
-    struct _ora_stack_node_d* stack;
-    struct _ora_stack_node_d* current;
+    _ora_stack_node* stack;
+    _ora_stack_node* current;
 } ora_document_read;
 
 typedef struct ora_document_write_d
@@ -68,36 +66,11 @@ typedef struct ora_document_write_d
     int width;
     int height;
     zipFile file;
-    struct _ora_stack_node_d* stack;
-    struct _ora_stack_node_d* parent;
-    struct _ora_stack_node_d* sibling;
+    _ora_stack_node* stack;
+    _ora_stack_node* parent;
+    _ora_stack_node* sibling;
     int layer_number;
 } ora_document_write;
-
-typedef struct 
-{
-    int x;
-    int y;
-    xmlChar* name;
-} _ora_stack_stack;
-
-typedef struct 
-{
-    ora_rectangle bounds;
-    xmlChar* name;
-    xmlChar* src;
-    float opacity;
-} _ora_stack_layer;
-
-typedef struct _ora_stack_node_d
-{
-    struct _ora_stack_node_d* parent;    // parent node
-    struct _ora_stack_node_d* children;  // first child node
-    struct _ora_stack_node_d* sibling;   // next sibling node
-    int type;
-    void* data;
-} _ora_stack_node;
-
 
 tm_zip _ora_current_timestamp()
 {
@@ -130,294 +103,14 @@ zip_fileinfo _ora_default_fileinfo()
     return info;
 }
 
-xmlChar* _ora_get_as_string(xmlNodePtr node, char* attribute) {
-
-    xmlChar *val = xmlGetProp(node, (const xmlChar *) attribute);
-    if (!val) 
-        return NULL;
-
-    return val;
-}
-
-float _ora_get_as_float(xmlNodePtr node, char* attribute) {
-
-    xmlChar *val = xmlGetProp(node, (const xmlChar *) attribute);
-    if (!val) 
-        return 0;
-
-    float f = atof((char*) val);
-
-    xmlFree(val);
-    return f;
-}
-
-int _ora_get_as_int(xmlNodePtr node, char* attribute) {
-
-    xmlChar *val = xmlGetProp(node, (const xmlChar *) attribute);
-    if (!val) 
-        return 0;
-
-    int f = atoi((char*) val);
-    xmlFree(val);
-    return f;
-}
-
-int _ora_get_as_boolean(xmlNodePtr node, char* attribute) {
-
-    xmlChar *val = xmlGetProp(node, (const xmlChar *) attribute);
-    if (!val) 
-        return 0;
-
-    int f = strcasecmp((char*) val, "true") == 0;
-
-    xmlFree(val);
-    return f;
-}
-
-void _ora_set_as_string(xmlNodePtr node, char* attribute, char* value) {
-
-    xmlSetProp(node, (const xmlChar *) attribute, (const xmlChar *) value);
-
-}
-
-void _ora_set_as_float(xmlNodePtr node, char* attribute, float value) {
-    char str[_BUFFER_LENGTH];
-
-    sprintf(str, "%f", value);
-
-    xmlSetProp(node, (const xmlChar *) attribute, (const xmlChar *) str);
-}
-
-void _ora_set_as_int(xmlNodePtr node, char* attribute, int value) {
-    char str[_BUFFER_LENGTH];
-
-    sprintf(str, "%d", value);
-
-    xmlSetProp(node, (const xmlChar *) attribute, (const xmlChar *) str);
-}
-
-void _ora_set_as_boolean(xmlNodePtr node, char* attribute, int value) {
-    xmlSetProp(node, (const xmlChar *) attribute, (const xmlChar *) (value ? "true" : "false"));
-}
-
-void _ora_free_stack(_ora_stack_node* node) 
-{
-    _ora_stack_node* child;
-
-    if (!node)
-        return;
-
-    for (child = node->children; child; child = child->sibling) 
-    {
-        _ora_free_stack(child);
-    }
-
-    node->children = NULL;
-
-    if (node->data)
-    {
-        switch (node->type) 
-        {
-        case ORA_TYPE_STACK:
-            if (((_ora_stack_stack*)node->data)->name)
-                xmlFree(((_ora_stack_stack*)node->data)->name);
-            break;
-        case ORA_TYPE_LAYER:
-            if (((_ora_stack_layer*)node->data)->name)
-                xmlFree(((_ora_stack_layer*)node->data)->name);
-            if (((_ora_stack_layer*)node->data)->src)
-                xmlFree(((_ora_stack_layer*)node->data)->src);
-            break;
-        }
-        free(node->data);
-        node->data = NULL;
-    }
-
-    node->parent = NULL;
-
-
-    free(node);
-
-}
-
-_ora_stack_node* _ora_xml_to_stack(xmlNode * node, _ora_stack_node* parent, int* error)
-{
-    xmlNode *cur_node = NULL;
-    _ora_stack_node* fnode = NULL;
-    _ora_stack_node* snode = NULL;
-    _ora_stack_node* pnode = NULL;
-    _ora_stack_node* cnode = NULL;
-    void* data = NULL;
-    int type = 100;
-
-    for (cur_node = node; cur_node; cur_node = cur_node->next) 
-    {
-        if (cur_node->type != XML_ELEMENT_NODE) 
-            continue;
-
-        if (xmlStrcmp(cur_node->name, (const xmlChar *)"stack") == 0) 
-        {
-            type = ORA_TYPE_STACK;
-            if (parent && parent->type == ORA_TYPE_LAYER)
-            {
-                ORA_DEBUG("Error: Invalid parent for node stack.");
-                if (error) *error = ORA_ERROR_STACK;
-            }
-
-            data = malloc(sizeof(_ora_stack_stack));
-            ((_ora_stack_stack*)data)->x = _ora_get_as_int(cur_node, "x");
-            ((_ora_stack_stack*)data)->y = _ora_get_as_int(cur_node, "y");
-            ((_ora_stack_stack*)data)->name = _ora_get_as_string(cur_node, "name");
-        } else
-        if (xmlStrcmp(cur_node->name, (const xmlChar *)"layer") == 0) 
-        {
-            type = ORA_TYPE_LAYER;
-            if (!parent || parent->type != ORA_TYPE_STACK)
-            {
-                ORA_DEBUG("Error: Invalid parent for node layer.");
-                if (error) *error = ORA_ERROR_STACK;
-            }
-            data = malloc(sizeof(_ora_stack_layer));
-            ((_ora_stack_layer*)data)->bounds.x = _ora_get_as_int(cur_node, "x");
-            ((_ora_stack_layer*)data)->bounds.y = _ora_get_as_int(cur_node, "y");
-            ((_ora_stack_layer*)data)->name = _ora_get_as_string(cur_node, "name");
-            ((_ora_stack_layer*)data)->src = _ora_get_as_string(cur_node, "src");
-            ((_ora_stack_layer*)data)->opacity = _ora_get_as_float(cur_node, "opacity");
-
-            if (!((_ora_stack_layer*)data)->src) 
-            {
-                
-                ORA_DEBUG("Error: Layer source specification required.");
-                if (error) *error = ORA_ERROR_STACK;
-            }
-
-        } else
-        if (xmlStrcmp(cur_node->name, (const xmlChar *)"filter") == 0) 
-        {
-            ORA_DEBUG("Warning: filters unsupported at the moment. Skipping.");
-            continue;
-        }
-        ORA_DEBUG("XML parsing: element %s\n", cur_node->name);
-
-        snode = (_ora_stack_node*) malloc(sizeof(_ora_stack_node));
-        snode->type = type;
-        snode->data = data;
-        snode->parent = parent;
-        snode->sibling = NULL;
-        snode->children = NULL;
-
-        if (cur_node->children)
-        {
-            cnode = _ora_xml_to_stack(cur_node->children, snode, error);
-            snode->children = cnode;
-
-        }
-
-        if (pnode)
-            pnode->sibling = snode;
-
-        pnode = snode;
-
-
-        if (!fnode)
-            fnode = snode;
-    }
-
-    return fnode;
-}
-
-xmlNode* _ora_stack_to_xml(_ora_stack_node* node, ora_rectangle* bounds)
-{
-    _ora_stack_node* cur_node = NULL;
-    xmlNodePtr xml_node = NULL;
-    xmlNodePtr xml_node_n = NULL;
-    xmlNodePtr xml_node_f = NULL;
-    xmlNodePtr xml_node_c = NULL;
-    ora_rectangle local_bounds, child_bounds;
-
-    local_bounds.x = 0;
-    local_bounds.y = 0;
-    local_bounds.width = 0;
-    local_bounds.height = 0;
-
-    void* data = NULL;
-    int type = 100;
-
-    for (cur_node = node; cur_node; cur_node = cur_node->sibling) 
-    {
-        int x = 0;
-        int y = 0;
-        xml_node = NULL;
-        data = cur_node->data;
-
-        switch (cur_node->type)
-        {
-        case ORA_TYPE_STACK:
-            xml_node = xmlNewNode(NULL, BAD_CAST "stack");
-
-            if (((_ora_stack_stack*)data)->name)
-                _ora_set_as_string(xml_node, "name", ((_ora_stack_stack*)data)->name);
-
-            x = ((_ora_stack_stack*)data)->x;
-            y = ((_ora_stack_stack*)data)->y;
-            _ora_set_as_int(xml_node, "x", x);
-            _ora_set_as_int(xml_node, "y", y);
-
-            if (cur_node->children)
-            {
-                xml_node_c = _ora_stack_to_xml(cur_node->children, &child_bounds);
-                xmlAddChildList(xml_node, xml_node_c);
-
-                local_bounds.width = MAX(child_bounds.x + child_bounds.width + x, local_bounds.width);
-                local_bounds.height = MAX(child_bounds.y + child_bounds.height + y, local_bounds.height);
-
-            }
-
-            break;
-        case ORA_TYPE_LAYER:
-            xml_node = xmlNewNode(NULL, BAD_CAST "layer");
-
-            if (((_ora_stack_layer*)data)->name)
-                _ora_set_as_string(xml_node, "name", ((_ora_stack_layer*)data)->name);
-
-            _ora_set_as_string(xml_node, "src", ((_ora_stack_layer*)data)->src);
-
-            x = ((_ora_stack_layer*)data)->bounds.x;
-            y = ((_ora_stack_layer*)data)->bounds.y;
-            _ora_set_as_int(xml_node, "x", x);
-            _ora_set_as_int(xml_node, "y", y);
-            _ora_set_as_float(xml_node, "opacity", ((_ora_stack_layer*)data)->opacity);
-
-            local_bounds.width = MAX(x + ((_ora_stack_layer*)data)->bounds.width, local_bounds.width);
-            local_bounds.height = MAX(y + ((_ora_stack_layer*)data)->bounds.height, local_bounds.height);
-            break;
-        }
-
-
-
-        if (xml_node_n)
-            xmlAddNextSibling(xml_node_n, xml_node);
-
-        xml_node_n = xml_node;
-
-        if (!xml_node_f)
-            xml_node_f = xml_node;
-    }
-
-    *bounds = local_bounds;
-    return xml_node_f;
-}
-
 _ora_stack_node* _ora_parse_stack(unzFile zip, int* width, int* height, int* error) 
 {
     unz_file_info file_info;
     char buffer[_BUFFER_LENGTH];
     char* stack_buffer = NULL;
     int stack_buffer_length = 0;
-    xmlDocPtr xml = NULL;
-    xmlNodePtr node = NULL;
     _ora_stack_node* stack;
-    int int_error = 0;
+    ora_rectangle bounds;
 
     ORA_DEBUG("Parsing and validating layer stack.\n");
 
@@ -458,42 +151,20 @@ _ora_stack_node* _ora_parse_stack(unzFile zip, int* width, int* height, int* err
     if (!stack_buffer_length)
         stack_buffer_length = file_info.uncompressed_size;
 
-    xml = xmlReadMemory(stack_buffer, stack_buffer_length, "stack.xml", NULL, 0);
-
-    if (xml == NULL ) 
-    {
-        ORA_DEBUG("stack.xml not parsed successfully. \n");
-        if (error) *error = ORA_ERROR_STACK;
-        return NULL;
-    }
+    //xml = xmlReadMemory(stack_buffer, stack_buffer_length, "stack.xml", NULL, 0);
+    stack = _ora_xml_to_stack(stack_buffer, stack_buffer_length, &bounds, error);
 
     free(stack_buffer);
 
-    node = xmlDocGetRootElement(xml);
-
-    if (xmlStrcmp(node->name, (const xmlChar *)"image") != 0) 
+    if (stack == NULL) 
     {
-        xmlFreeDoc(xml);
-        ORA_DEBUG("stack.xml not valid. \n");
-        if (error) *error = ORA_ERROR_STACK;
+        ORA_DEBUG("stack.xml not parsed successfully. \n");
+        //if (error) *error = ORA_ERROR_STACK;
         return NULL;
     }
 
-    stack = _ora_xml_to_stack(node->children, NULL, &int_error);
-
-    if (error)
-        *error = int_error;
-
-    *width = _ora_get_as_int(node, "w");
-    *height = _ora_get_as_int(node, "h");
-
-    xmlFreeDoc(xml);
-
-    if (int_error)
-    {
-        _ora_free_stack(stack);
-        return NULL;
-    }
+    *width = bounds.width;
+    *height = bounds.height;
 
 
     if (*width < 1 || *height < 1)
@@ -504,9 +175,7 @@ _ora_stack_node* _ora_parse_stack(unzFile zip, int* width, int* height, int* err
         return NULL;
     }
 
-
     return stack;
-    //TODO: call this in ora_cleanup() - xmlCleanupParser();
 
 }
 
@@ -514,33 +183,19 @@ void _ora_write_stack(ora_document_write* doc)
 {
     zipFile zip;
     zip_fileinfo info;
-    xmlDocPtr xml = NULL;
-    xmlNodePtr root = NULL;
-    xmlNodePtr node = NULL;
     _ora_stack_node* stack;
     int int_error = 0;
-    xmlChar* xmlbuff = NULL;
+    char* xmlbuff = NULL;
     int buffersize;
     ora_rectangle bounds;
 
     zip = doc->file;
 
-    xml = xmlNewDoc(BAD_CAST "1.0");
-    root = xmlNewNode(NULL, BAD_CAST "image");
+    bounds.width = doc->width;
+    bounds.height = doc->height;
 
-    node = _ora_stack_to_xml(doc->stack, &bounds);
-
-    _ora_set_as_int(root, "w", doc->width > -1 ? doc->width : bounds.width);
-    _ora_set_as_int(root, "h", doc->height > -1 ? doc->height : bounds.height);
-
-    xmlDocSetRootElement(xml, root);
-
-    xmlAddChild(root, node);
-
-    xmlDocDumpFormatMemory(xml, &xmlbuff, &buffersize, 1);
-    //printf("%s", (char *) xmlbuff);
-
-    xmlFreeDoc(xml);
+    xmlbuff = _ora_stack_to_xml(doc->stack, bounds, &int_error);
+    //printf("%s", xmlbuff);
 
     ORA_DEBUG("Writing layer stack.\n");
 
@@ -548,20 +203,20 @@ void _ora_write_stack(ora_document_write* doc)
 
     if (zipOpenNewFileInZip (zip, "stack.xml", &info, NULL, 0, NULL, 0, NULL, Z_DEFLATED, Z_DEFAULT_COMPRESSION) != ZIP_OK)
     {
-        xmlFree(xmlbuff);
+        free(xmlbuff);
         ORA_SET_ERROR(doc, ORA_ERROR_WRITE);
         return;
     }
 
     if (zipWriteInFileInZip(zip, xmlbuff, buffersize) < 0) 
     {
-        xmlFree(xmlbuff);
+        free(xmlbuff);
         zipClose(zip, NULL);
         ORA_SET_ERROR(doc, ORA_ERROR_WRITE);
         return;
     }
 
-    xmlFree(xmlbuff);
+    free(xmlbuff);
 
     if (zipCloseFileInZip (zip) != ZIP_OK)
     {
@@ -669,6 +324,8 @@ ORA _ora_write_file(const char* filename, int flags, int* error) {
     zip_fileinfo info;
     char buffer[_BUFFER_LENGTH];
     ora_document_write* write_struct;
+    _ora_stack_node* stack;
+    int int_error = 0;
 
     zip = zipOpen (filename, APPEND_STATUS_CREATE);
 
@@ -677,11 +334,6 @@ ORA _ora_write_file(const char* filename, int flags, int* error) {
         if (error) *error = ORA_ERROR_WRITE;
         return NULL;
     }
-
-    xmlDocPtr xml = NULL;
-    xmlNodePtr node = NULL;
-    _ora_stack_node* stack;
-    int int_error = 0;
 
     ORA_DEBUG("Writing layer stack.\n");
 
@@ -758,7 +410,7 @@ extern int ora_close(ORA ora)
     ora_document_write* write_struct;
 
     if (!ora)
-        return -1;
+        return ORA_ERROR;
 
     ORA_CLEAR_ERROR(ora);
 
@@ -789,9 +441,8 @@ extern int ora_close(ORA ora)
 
         zipClose(write_struct->file, NULL); // ORA_COMMENT);
         _ora_free_stack(write_struct->stack);
-        read_struct->stack = NULL;
-        read_struct->current = NULL;
-        read_struct->file = NULL;
+        write_struct->stack = NULL;
+        write_struct->file = NULL;
 
         free(write_struct);
 
@@ -804,6 +455,9 @@ extern int ora_close(ORA ora)
 extern int ora_stack_reset(ORA ora) 
 {
     ora_document_read* read_struct;
+
+    if (!ora)
+        return ORA_ERROR;
 
     ORA_CLEAR_ERROR(ora);
     _GET_READ_DOCUMENT(ora, read_struct);
@@ -825,6 +479,9 @@ extern int ora_stack_next(ORA ora, int flags)
     ora_document_read* read_struct;
     _ora_stack_node* node;
     int moves = 0;
+
+    if (!ora)
+        return ORA_ERROR;
 
     ORA_CLEAR_ERROR(ora);
     _GET_READ_DOCUMENT(ora, read_struct);
@@ -884,6 +541,9 @@ extern int ora_stack_level(ORA ora)
     _ora_stack_node* node;
     int level = 0;
 
+    if (!ora)
+        return ORA_ERROR;
+
     ORA_CLEAR_ERROR(ora);
     _GET_READ_DOCUMENT(ora, read_struct);
 
@@ -916,6 +576,9 @@ extern int ora_stack_type(ORA ora)
 {
     ora_document_read* read_struct;
 
+    if (!ora)
+        return ORA_ERROR;
+
     ORA_CLEAR_ERROR(ora);
     _GET_READ_DOCUMENT(ora, read_struct);
 
@@ -942,6 +605,9 @@ extern int ora_read_layer(ORA ora, ubyte** data, ora_rectangle* geometry, int* f
     ora_document_read* read_struct;
     _ora_stack_layer* layer_data;
     unzFile zip;
+
+    if (!ora)
+        return ORA_ERROR;
 
     ORA_CLEAR_ERROR(ora);
     _GET_READ_DOCUMENT(ora, read_struct);
@@ -1019,6 +685,9 @@ extern int ora_open_stack(ORA ora, const char* name, int x, int y)
     ora_document_write* write_struct;
     _ora_stack_node* node;
 
+    if (!ora)
+        return ORA_ERROR;
+
     ORA_CLEAR_ERROR(ora);
     _GET_WRITE_DOCUMENT(ora, write_struct);
 
@@ -1050,6 +719,9 @@ extern int ora_close_stack(ORA ora)
 {
     ora_document_write* write_struct;
 
+    if (!ora)
+        return ORA_ERROR;
+
     ORA_CLEAR_ERROR(ora);
     _GET_WRITE_DOCUMENT(ora, write_struct);
 
@@ -1080,6 +752,9 @@ extern int ora_write_layer(ORA ora, const char* name, ora_rectangle geometry, in
     _ora_stack_node* node;
     char src[_BUFFER_LENGTH];
 
+    if (!ora)
+        return ORA_ERROR;
+
     ORA_CLEAR_ERROR(ora);
     _GET_WRITE_DOCUMENT(ora, write_struct);
 
@@ -1098,7 +773,7 @@ extern int ora_write_layer(ORA ora, const char* name, ora_rectangle geometry, in
 
     info = _ora_default_fileinfo();
 
-    if (zipOpenNewFileInZip (write_struct->file, src, &info, NULL, 0, NULL, 0, NULL, Z_DEFLATED, Z_DEFAULT_COMPRESSION) != ZIP_OK)
+    if (zipOpenNewFileInZip (write_struct->file, src, &info, NULL, 0, NULL, 0, NULL, Z_DEFLATED, Z_BEST_SPEED) != ZIP_OK) //Z_DEFAULT_COMPRESSION
     {
         ORA_SET_ERROR(write_struct, ORA_ERROR_WRITE);
         return ORA_ERROR;

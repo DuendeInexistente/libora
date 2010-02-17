@@ -155,6 +155,7 @@ int main( int argc, char** argv) {
             printf("Reading layer: %d - ", i);
 
             timer = clock();
+            image = NULL;
             ora_read_layer(ora_in, &image, &geometry, &format, &opacity, tool_progress_callback);
 
             timer = clock() - timer;
@@ -175,7 +176,8 @@ int main( int argc, char** argv) {
             printf("\nDone (%ld ms)\n", (timer / (CLOCKS_PER_SEC / 1000)));
             write += timer;
 
-            free(image);
+            if (image)
+                free(image);
         } else 
             break;
     }

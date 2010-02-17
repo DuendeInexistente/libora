@@ -10,24 +10,24 @@ ENDIF(DEBUG_DEFAULT)
 
 INCLUDE(FindZLIB)
 INCLUDE(FindPNG)
-INCLUDE(FindLibXml2)
+INCLUDE(FindEXPAT)
 
 ADD_DEFINITIONS(${PNG_DEFINITIONS})
-ADD_DEFINITIONS(${LIBXML2_DEFINITIONS})
+#ADD_DEFINITIONS(${LIBXML2_DEFINITIONS})
 
-LINK_LIBRARIES(${PNG_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBXML2_LIBRARIES} ora)
+LINK_LIBRARIES(${PNG_LIBRARIES} ${ZLIB_LIBRARIES} ${EXPAT_LIBRARIES} ora)
 
 IF (WIN32)
 #ADD_LIBRARY(camalay STATIC ./src/layers/layer.c ./src/layers/png.c ./src/ora.c)
 ENDIF (WIN32)
 
 IF (UNIX)
-ADD_LIBRARY(ora SHARED ./src/ora.c ./src/internal.c ./src/zip/unzip.c ./src/zip/zip.c ./src/zip/ioapi.c ./src/layers/layers.c)
+ADD_LIBRARY(ora SHARED src/ora.c src/internal.c src/zip/unzip.c src/zip/zip.c src/zip/ioapi.c src/layers/layers.c src/layers/stack.c src/layers/stack_parser.c src/utils/stringbuffer.c)
 ENDIF (UNIX)
 
 ADD_EXECUTABLE(oratool ./src/tool/oratool.c)
 
-INCLUDE_DIRECTORIES(AFTER ${ZLIB_INCLUDE_DIR} ${PNG_INCLUDE_DIR} ${LIBXML2_INCLUDE_DIR})
+INCLUDE_DIRECTORIES(AFTER ${ZLIB_INCLUDE_DIR} ${PNG_INCLUDE_DIR} ${EXPAT_INCLUDE_DIRS} src/)
 
 SET(HEADER_FILES ./src/ora.h)
 

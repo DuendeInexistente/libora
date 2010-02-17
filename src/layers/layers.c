@@ -247,7 +247,7 @@ int ora_write_raster(ora_document* document, zipFile zip, ubyte* data, int width
 
     // no need for slow compression, because everything gets compressed with the
     // same algorithm anyway
-    png_set_compression_level(png_ptr, Z_BEST_SPEED); // Z_NO_COMPRESSION
+    png_set_compression_level(png_ptr, Z_NO_COMPRESSION); //Z_BEST_SPEED
 
     png_set_compression_mem_level(png_ptr, 8);
     png_set_compression_strategy(png_ptr, Z_DEFAULT_STRATEGY);
