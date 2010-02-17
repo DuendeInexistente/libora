@@ -25,7 +25,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <png.h>
-#include "../ora.h"
+#include "ora.h"
 
 int tool_write_png(const char* filename, ubyte* image_data, int width, int height, int format, progress_callback callback)
 {

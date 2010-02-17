@@ -1,0 +1,8 @@
+
+
+ADD_EXECUTABLE(oratool oratool.c)
+
+#IF (UNIX)
+#INSTALL(TARGETS oratool EXECUTABLE DESTINATION bin)
+#ENDIF (UNIX)
+
