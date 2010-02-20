@@ -80,6 +80,11 @@ typedef struct _ora_rectangle
     int height;
 } ora_rectangle;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 extern int ora_open(const char* filename, int flags, ORA* ora);
 
 extern int ora_stack_reset(ORA ora);
@@ -106,6 +111,8 @@ extern int ora_write_tiles(ORA ora, const char* name, ora_rectangle geometry, in
 */
 extern int ora_error(ORA ora);
 
-
+#ifdef __cplusplus
+}
+#endif
 
 #endif
