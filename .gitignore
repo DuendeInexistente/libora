@@ -1,0 +1,8 @@
+CMakeCache.txt
+Makefile
+CMakeFiles
+install_manifest.txt
+*.cmake
+
+*.so
+oratool
