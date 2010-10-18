@@ -1,0 +1,34 @@
+This directory includes a Python script that is used to generate
+an Expat based parser/validator for OpenRaster stack description
+XML. Although it was started as a generic parser generator it
+(at the moment) lacks some important features. This is why I have
+decided to temporarly publish the entire code in the libora 
+repository I/anyone finds this stuff interesting a separate project
+can be started and this code can be removed from the repository.
+
+If anyone wonders why a parser generator here are some of my reasons
+why I have decided to go write one:
+ * A full-blown validator that uses a Relax NG, DTD or XSD description
+   has to parse that description therefore introducing some overhead and
+   usually depends on even more aditional libraries. The idea of libora
+   is that it is small, fast and has as few dependencies as possible
+ * Expat is a nice, small and fast stream oriented parser for XML documents. 
+   It does not however provide validation or any high end functionality.
+ * Writing custom Expat handlers by hand is extremely dull and error
+   prone. A generator can do much better job here.
+
+The original idea was to create a program that parses an XML description
+file like Relax NG, stores the definition in Python objects and leaves 
+the rest to Cheetah template engine to produce output code. The current
+implementation does not parse anything (instead Python objects are initialized
+explicitly) and can only produce an Expat parser code for C. It also supports
+a very basic subset of the XML definitions (that I required for libora).
+Everything is extendible though.
+
+As mentioned, the script requires Cheetah template engine installed.
+You can get it here: http://www.cheetahtemplate.org/. To run the generator
+type: "python orastack.py" into the terminal. This will generate/update
+stack_parser.c and stack_parser.c in the layers directory.
+
+Luka Čehovin (luka.cehovin@gmail.com)
+18/10/2010

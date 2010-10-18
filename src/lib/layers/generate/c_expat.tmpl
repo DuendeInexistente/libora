@@ -1,0 +1,464 @@
+#*
+#
+# Copyright (C) 2010 Luka Cehovin (luka.cehovin@gmail.com)
+# 
+# genesx is free software.
+# 
+# You may redistribute it and/or modify it under the terms of the
+# GNU General Public License, as published by the Free 
+# Software Foundation; either version 2 of the License, 
+# or (at your option) any later version.
+# 
+# genesx is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public 
+# License along with the source. If not, write to:
+# The Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor
+# Boston, MA  02110-1301, USA.
+#
+# ------------------------------------------------------------
+#
+# Check the README file for more details!
+*#
+#def argument_def($argument)
+    #if $argument.type == "text"
+    XML_Char* arg_$argument.name = NULL;
+    #elif $argument.type == "int"
+    int arg_$argument.name = 0;
+    #elif $argument.type == "float"
+    float arg_$argument.name = 0;
+    #elif $argument.type == "boolean"
+    int arg_$argument.name = 0;
+    #end if
+#end def
+#def argument_decl($argument)
+#if $argument.type == "text"
+const XML_Char* arg_$argument.name #slurp
+#elif $argument.type == "int"
+int arg_$argument.name #slurp
+#elif $argument.type == "float"
+float arg_$argument.name #slurp
+#elif $argument.type == "boolean"
+int arg_$argument.name #slurp
+#end if
+#end def
+#def argument_name($argument)
+arg_$argument.name #slurp
+#end def
+<<<<<< ${name}_parser.h >>>>>>
+/*
+ * $title
+ * Generated with ${generator.name} ${generator.version}
+ *
+ * **** This is an auto-generated file! Do not edit! ****
+ *
+ */
+
+#echo '#ifndef' # __H_${name.upper()}_PARSER
+#echo '#define' # __H_${name.upper()}_PARSER
+
+int ${name}_parse(char* source, int len, void* data);
+
+#set $elementid = 0
+#for $uid, $element in $elements.items()
+#if $uid == '_start'
+#continue
+#end if
+#set $uuid = $uid.upper()
+void* ${name}_${uid}_handle_open(void *userData #slurp
+#for $argument in $element.arguments
+, $argument_decl($argument) #slurp
+#end for
+);
+void* ${name}_${uid}_handle_close(void *userData, XML_Char* text);
+#set $elementid = $elementid + 1
+#end for
+
+#echo '#endif ' #
+
+<<<<<< ${name}_parser.c >>>>>>
+/*
+ * $title
+ * Generated with ${generator.name} ${generator.version}
+ *
+ * **** This is an auto-generated file! Do not edit! ****
+ *
+ */
+#raw
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <expat.h>
+#end raw
+
+#echo '#include' # "${name}_parser.h"
+
+#set $elementid = 0
+#for $elementuid, $element in $elements.items()
+#echo '#define ' # STATE_$elementuid.upper() $elementid
+#set $elementid = $elementid + 1
+#end for
+
+typedef struct _${name}_stack 
+{
+    int element;
+    XML_Char* text;
+    struct _${name}_stack* prev;
+    XML_CharacterDataHandler text_handler;
+    XML_StartElementHandler start_handler;
+    XML_EndElementHandler end_handler;
+    int* counters;
+} ${name}_stack;
+
+typedef struct _${name}_state 
+{
+    ${name}_stack* stack;
+    char* error;
+    int error_line;
+    int error_offset;
+    int state;
+    XML_Parser parser;
+    void* userData;
+} ${name}_state;
+
+#set $elementid = 0
+#for $uid, $element in $elements.items()
+#set $uuid = $uid.upper()
+void _${name}_${uid}_handle(${name}_state* state, const XML_Char *name, const XML_Char **atts);
+void _${name}_${uid}_begin(void *userData, const XML_Char *name, const XML_Char **atts);
+void _${name}_${uid}_end(void *userData, const XML_Char *name);
+void _${name}_${uid}_text (void *userData, const XML_Char *s, int len);
+#set $elementid = $elementid + 1
+#end for
+
+${name}_stack* _${name}_stack_push(${name}_state* state, int id, int counters, XML_StartElementHandler start_handler, XML_EndElementHandler end_handler, XML_CharacterDataHandler text_handler)
+{
+    ${name}_stack* element;
+
+    element = (${name}_stack*) malloc(sizeof(${name}_stack));
+
+    element->element = id;
+    element->prev = state->stack;
+    element->text = NULL;
+    element->start_handler = start_handler;
+    element->end_handler = end_handler;
+    element->text_handler = text_handler;
+    element->counters = (counters) ? (int*) malloc(sizeof(int) * counters) : NULL;
+
+    if (element->counters)
+        memset(element->counters, 0, sizeof(int) * counters);
+
+    state->stack = element;
+
+    XML_SetElementHandler(state->parser, start_handler, end_handler);
+    XML_SetCharacterDataHandler(state->parser, text_handler);
+
+    return element;
+}
+
+void _${name}_stack_pop(${name}_state* state)
+{
+    ${name}_stack* element;
+    XML_StartElementHandler start_handler = NULL;
+    XML_EndElementHandler end_handler = NULL;
+    XML_CharacterDataHandler text_handler = NULL;
+
+    element = state->stack;
+
+    if (element) {
+
+        state->stack = element->prev;
+
+        if (element->text)
+            free(element->text);
+        if (element->counters)
+            free(element->counters);
+
+        element->text = NULL;
+
+        free(element);
+    }
+    if (state->stack) {
+        start_handler = state->stack->start_handler;
+        end_handler = state->stack->end_handler;
+        text_handler = state->stack->text_handler;
+    }
+
+    XML_SetElementHandler(state->parser, start_handler, end_handler);
+    XML_SetCharacterDataHandler(state->parser, text_handler);
+}
+
+${name}_stack* _${name}_stack_peek(${name}_state* state)
+{
+    return state->stack;
+}
+
+void _${name}_stop(${name}_state* state, const char* error)
+{
+    state->error_line = XML_GetCurrentLineNumber(state->parser);
+    state->error_offset = XML_GetCurrentColumnNumber(state->parser);
+    XML_StopParser(state->parser, 0);
+    state->error = (char*) malloc(sizeof(char) * (strlen(error) + 1));
+    strcpy(state->error, error);
+}
+
+void _${name}_stradd(XML_Char** src, const XML_Char* add, int len) 
+{
+    XML_Char* dst;
+    int offset = 0;
+
+    if (!*src) 
+    {
+        dst = (XML_Char*) malloc(sizeof(XML_Char) * (len+1));
+        offset = 0;
+    } else {
+        offset = strlen(*src);
+        dst = (XML_Char*) realloc(*src, offset + sizeof(XML_Char) * (len+1));
+    }
+
+    memcpy(dst + offset, add, len);
+
+    dst[offset+len+1] = '\0';
+
+    *src = dst;
+}
+
+int _${name}_strcmp(const XML_Char* str1, const char* str2) 
+{
+    return strcmp(str1, str2) == 0 ? 1 : 0;
+}
+
+int _${name}_hasarg(const XML_Char** arguments, const char* name) 
+{
+    int i = 0;
+    while (1)
+    {
+        if (!arguments[i])
+            return 0;
+        if (_${name}_strcmp(arguments[i], name))
+            return 1;
+        i += 2;
+    }
+}
+
+const XML_Char* _${name}_get_string(const XML_Char** arguments, const char* name) 
+{
+    int i = 0;
+    while (1)
+    {
+        if (!arguments[i])
+            return NULL;
+        if (_${name}_strcmp(arguments[i], name))
+            return arguments[i+1];
+        i += 2;
+    }
+}
+
+float _${name}_get_float(const XML_Char** arguments, const char* name) 
+{
+
+    const XML_Char* val = _${name}_get_string(arguments, name);
+    if (!val) 
+        return 0;
+
+    float f = atof((char*) val);
+
+    return f;
+}
+
+int _${name}_get_int(const XML_Char** arguments, const char* name) 
+{
+
+    const XML_Char* val = _${name}_get_string(arguments, name);
+    if (!val) 
+        return 0;
+
+    int f = atoi((char*) val);
+    return f;
+}
+
+int _${name}_get_boolean(const XML_Char** arguments, const char* name) 
+{
+
+    const XML_Char* val = _${name}_get_string(arguments, name);
+    if (!val) 
+        return 0;
+
+    int f = strcasecmp((char*) val, "true") == 0;
+
+    return f;
+}
+
+#set $elementid = 0
+#for $uid, $element in $elements.items()
+#set $uuid = $uid.upper()
+
+/*
+ * ---- event handlers for $element.name ($elementuid) tag ----
+ * $element.comment
+ */
+#if not $element.name == "_start"
+void _${name}_${uid}_handle(${name}_state* state, const XML_Char *name, const XML_Char **atts) 
+{
+    #for $argument in $element.arguments
+    $argument_def($argument)
+    #end for
+
+    #for $argument in $element.arguments
+        if (_${name}_hasarg(atts, "$argument.name"))
+        {
+            $argument_name($argument) = #slurp
+#if $argument.type == "text"
+(XML_Char*) _${name}_get_string(atts, "$argument.name");
+#elif $argument.type == "int"
+_${name}_get_int(atts, "$argument.name");
+#elif $argument.type == "float"
+_${name}_get_float(atts, "$argument.name");
+#elif $argument.type == "boolean"
+_${name}_get_boolean(atts, "$argument.name");
+#end if
+        } 
+        #if $argument.mandatory
+        else {
+            _${name}_stop(state, "Attribute $argument.name is mandatory for element $element.name");
+            return;
+        }
+        #end if
+    #end for
+
+    state->userData = ${name}_${uid}_handle_open(state->userData #slurp
+#for $argument in $element.arguments
+, $argument_name($argument) #slurp
+#end for
+);
+}
+
+#end if
+
+void _${name}_${uid}_begin(void *userData, const XML_Char *name, const XML_Char **atts) 
+{
+
+#raw
+#ifdef DEBUG
+#end raw
+    printf("XML ($uid) new element %s \n", name);
+#raw
+#endif
+#end raw
+
+    ${name}_state* state = (${name}_state*) userData;
+    #set $childno = 0
+    #for $child in $element.children
+    if (_${name}_strcmp(name, "$child.name")) 
+    {
+        state->stack->counters[$childno]++;
+
+        #if $child.has_max()
+        if ( state->stack->counters[$childno] > $child.max )
+        {
+            _${name}_stop(state, "Maximum number of $elements[$child.name].name elements exceeded.");
+            return;
+        }
+        #end if
+
+        _${name}_stack_push(state, STATE_${child.name.upper()}, $elements[$child.name].size(), _${name}_${child.name}_begin, _${name}_${child.name}_end, _${name}_${child.name}_text);
+
+        _${name}_${child.name}_handle(state, name, atts);
+
+        return;
+    }
+    #set $childno = $childno + 1
+    #end for
+
+    _${name}_stop(state, "Unexpected element.");
+    return;
+}
+
+void _${name}_${uid}_end(void *userData, const XML_Char *name) 
+{
+    ${name}_state* state = (${name}_state*) userData;
+    if (!_${name}_strcmp(name, "$element.name")) 
+    {
+        _${name}_stop(state, "Unexpected element closure.");
+        return;
+    }
+
+    #set $childno = 0
+    #for $child in $element.children
+    #if $child.has_min()
+    if ( state->stack->counters[$childno] < $child.min )
+    {
+        _${name}_stop(state, "Not enough elements of type $elements[$child.name].name .");
+        return;
+    }
+    #end if
+    #set $childno = $childno + 1
+    #end for
+    #if not $element.name == "_start"
+    state->userData = ${name}_${uid}_handle_close(state->userData, state->stack->text);
+    #end if
+    _${name}_stack_pop(state);
+
+}
+
+void _${name}_${uid}_text (void *userData, const XML_Char *s, int len)
+{
+#if not ($element.content == 'none') and not $element.name == "_start"
+    ${name}_state* state = (${name}_state*) userData;
+    ${name}_stack* stack = _${name}_stack_peek(state);
+    _${name}_stradd(&(stack->text), s, len);
+#end if
+}
+
+
+#set $elementid = $elementid + 1
+#end for
+
+int ${name}_parse(char* source, int len, void* data)
+{
+    int error;
+    XML_Parser parser = NULL;
+    ${name}_state* state;
+
+    parser = XML_ParserCreate((const XML_Char*) "UTF-8");
+
+    state = (${name}_state*) malloc(sizeof(${name}_state));
+    state->stack=NULL;
+    state->error = NULL;
+    state->parser = parser;
+    state->userData = data;
+
+    _${name}_stack_push(state, STATE_${start.name.upper()}, $start.size(), _${name}_${start.name}_begin, _${name}_${start.name}_end, _${name}_${start.name}_text);
+
+    XML_SetUserData(parser, state);
+
+    error = XML_Parse(parser, source, len, 1);
+
+    while (state->stack)
+    {
+        _${name}_stack_pop(state);
+    }
+
+    if (state->error)
+    {
+        error = -1;
+#raw
+#ifdef DEBUG
+        printf("XML parse error: %s (%d, %d)\n", state->error, state->error_line, state->error_offset);
+        printf("XML buffer dump: %s\n", source);
+#endif
+#end raw
+        free(state->error);
+    } else error = 0;
+
+    free(state);
+
+    XML_ParserFree(parser);
+
+    return error;
+}
+
