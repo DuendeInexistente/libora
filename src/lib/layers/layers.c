@@ -1,26 +1,29 @@
 /* -*- Mode: C; indent-tabs-mode: nil; c-basic-offset: 4; tab-width: 4 -*- */
 /*
- * Copyright (C) Luka Cehovin 2010 <luka@tnode.com>
+ * Redistribution and use in source and binary forms, with or without modification, are
+ * permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice, this list of
+ *    conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice, this list
+ *    of conditions and the following disclaimer in the documentation and/or other materials
+ *    provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY LIBORA DEVELOPERS ``AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+ * FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LIBORA DEVELOPERS OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
- * libora is free software.
- * 
- * You may redistribute it and/or modify it under the terms of the
- * GNU Lesser General Public License, as published by the Free 
- * Software Foundation; either version 2 of the License, 
- * or (at your option) any later version.
- * 
- * main.c is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU Lesser General Public 
- * License along with the source. If not, write to:
- * The Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor
- * Boston, MA  02110-1301, USA.
+ * The views and conclusions contained in the software and documentation are those of the
+ * authors and should not be interpreted as representing official policies, either expressed
+ * or implied, of libora developers.
  */
-
 
 
 #include <stdlib.h>
@@ -73,7 +76,7 @@ void _ora_png_flush_data(png_structp png_ptr)
     //TODO: flushing
 }
 
-int ora_read_raster(ora_document* document, unzFile zip, ubyte** data, int* width, int* height, int* format, progress_callback callback)
+int ora_read_raster(ora_document* document, unzFile zip, ubyte** data, int* width, int* height, int* format, ora_progress_callback callback)
 {
     png_structp png_ptr;
     png_infop info_ptr;
@@ -210,7 +213,7 @@ png_set_sig_bytes(png_ptr, number);
 }
 
 
-int ora_write_raster(ora_document* document, zipFile zip, ubyte* data, int width, int height, int format, progress_callback callback)
+int ora_write_raster(ora_document* document, zipFile zip, ubyte* data, int width, int height, int format, ora_progress_callback callback)
 {
     png_structp png_ptr;
     png_infop info_ptr;

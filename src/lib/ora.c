@@ -1,26 +1,29 @@
-    /* -*- Mode: C; indent-tabs-mode: nil; c-basic-offset: 4; tab-width: 4 -*- */
+/* -*- Mode: C; indent-tabs-mode: nil; c-basic-offset: 4; tab-width: 4 -*- */
 /*
- * Copyright (C) Luka Cehovin 2010 <luka@tnode.com>
+ * Redistribution and use in source and binary forms, with or without modification, are
+ * permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice, this list of
+ *    conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice, this list
+ *    of conditions and the following disclaimer in the documentation and/or other materials
+ *    provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY LIBORA DEVELOPERS ``AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+ * FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LIBORA DEVELOPERS OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
- * libora is free software.
- * 
- * You may redistribute it and/or modify it under the terms of the
- * GNU Lesser General Public License, as published by the Free 
- * Software Foundation; either version 2 of the License, 
- * or (at your option) any later version.
- * 
- * main.c is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU Lesser General Public 
- * License along with the source. If not, write to:
- * The Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor
- * Boston, MA  02110-1301, USA.
+ * The views and conclusions contained in the software and documentation are those of the
+ * authors and should not be interpreted as representing official policies, either expressed
+ * or implied, of libora developers.
  */
-
 
 #include "ora.h"
 
@@ -599,7 +602,7 @@ extern int ora_stack_type(ORA ora)
 
 }
 
-extern int ora_read_layer(ORA ora, ubyte** data, ora_rectangle* geometry, int* format, float* opacity, progress_callback callback)
+extern int ora_read_layer(ORA ora, ubyte** data, ora_rectangle* geometry, int* format, float* opacity, ora_progress_callback callback)
 {
     unz_file_info file_info;
     ora_document_read* read_struct;
@@ -745,7 +748,7 @@ extern int ora_close_stack(ORA ora)
 
 }
 
-extern int ora_write_layer(ORA ora, const char* name, ora_rectangle geometry, int format, float opacity, ubyte* data, progress_callback callback)
+extern int ora_write_layer(ORA ora, const char* name, ora_rectangle geometry, int format, float opacity, ubyte* data, ora_progress_callback callback)
 {
     ora_document_write* write_struct;
     zip_fileinfo info;
@@ -779,7 +782,7 @@ extern int ora_write_layer(ORA ora, const char* name, ora_rectangle geometry, in
         return ORA_ERROR;
     }
 
-    if (ora_write_raster(write_struct, write_struct->file, data, geometry.width, geometry.height, format, callback) != ORA_OK) 
+    if (ora_write_raster((ora_document *)write_struct, write_struct->file, data, geometry.width, geometry.height, format, callback) != ORA_OK) 
     {
         return ORA_ERROR;
     }
