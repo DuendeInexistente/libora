@@ -56,7 +56,7 @@ void _ora_png_read_data(png_structp png_ptr, png_bytep data, png_size_t length)
 
     if (unzReadCurrentFile (zip, data, length) < 0) 
     {
-
+        //TODO: error?
     }
 
 

@@ -81,7 +81,7 @@ void* stack_stack_handle_open(void *userData , int arg_x  , int arg_y  , const X
 
     _ora_stack_node* node = (_ora_stack_node*) malloc(sizeof(_ora_stack_node));
     _ora_stack_stack* stack = (_ora_stack_stack*) malloc(sizeof(_ora_stack_stack));
-printf("parent \n");
+//printf("parent \n");
     // is this the master stack?
     if (!state->parent)
     {

@@ -152,7 +152,7 @@ int main( int argc, char** argv) {
     write = 0;
 
     while (1)
-    {
+    { 
         i++;
         if (ora_stack_next(ora_in, ORA_NEXT_NO_STACK) > 0)
         {

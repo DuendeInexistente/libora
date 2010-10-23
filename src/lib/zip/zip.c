@@ -906,6 +906,7 @@ extern int ZEXPORT zipWriteInFileInZip (file, buf, len)
     const void* buf;
     unsigned len;
 {
+
     zip_internal* zi;
     int err=ZIP_OK;
 
@@ -1018,8 +1019,10 @@ extern int ZEXPORT zipCloseFileInZipRaw (file, uncompressed_size, crc32)
         uncompressed_size = (uLong)zi->ci.stream.total_in;
     }
     compressed_size = (uLong)zi->ci.stream.total_out;
+
 #    ifndef NOCRYPT
-    compressed_size += zi->ci.crypt_header_size;
+//   If plain copy mode is used this is not initialized correctly and causes problems
+//   compressed_size += zi->ci.crypt_header_size;
 #    endif
 
     ziplocal_putValue_inmemory(zi->ci.central_header+16,crc32,4); /*crc*/

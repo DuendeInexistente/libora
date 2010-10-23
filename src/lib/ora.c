@@ -189,7 +189,6 @@ void _ora_write_stack(ora_document_write* doc)
     _ora_stack_node* stack;
     int int_error = 0;
     char* xmlbuff = NULL;
-    int buffersize;
     ora_rectangle bounds;
 
     zip = doc->file;
@@ -211,7 +210,7 @@ void _ora_write_stack(ora_document_write* doc)
         return;
     }
 
-    if (zipWriteInFileInZip(zip, xmlbuff, buffersize) < 0) 
+    if (zipWriteInFileInZip(zip, xmlbuff, strlen(xmlbuff)) < 0) 
     {
         free(xmlbuff);
         zipClose(zip, NULL);
