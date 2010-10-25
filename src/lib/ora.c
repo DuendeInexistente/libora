@@ -830,3 +830,12 @@ extern int ora_error(ORA ora)
     return ((ora_document*) ora)->error;
 }
 
+int ora_get_document_size(ORA ora, int* width, int* height) {
+
+    ora_document_read* doc = (ora_document_read*)ora;
+    *width = doc->width;
+    *height = doc->height;
+
+    return 0;
+}
+

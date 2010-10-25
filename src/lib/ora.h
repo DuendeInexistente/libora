@@ -188,6 +188,15 @@ extern "C" {
  */
 extern int ora_open(const char* filename, int flags, ORA* ora);
 
+
+/** @brief Get the total size of the document in pixels.
+ *
+ * @param ora 	    the document
+ * @param width 	output parameter for the width
+ * @param height 	output parameter for the height
+ */
+extern int ora_get_document_size(ORA ora, int* width, int* height);
+
 /** @brief Resets the current stack element pointer to the first element in the stack.
  *
  * @param ora 	the document 
