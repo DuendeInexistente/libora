@@ -157,7 +157,7 @@
 #define ORA_VISIBILITY_HIDDEN 0
 #define ORA_VISIBILITY_VISIBLE 1
 
-typedef char ubyte;
+typedef unsigned char ubyte;
 
 /// @brief Reference to a ORA document. 
 typedef void* ORA;
@@ -287,6 +287,8 @@ extern int ora_write_layer(ORA ora, const char* name, ora_rectangle geometry, in
 /*
 extern int ora_write_tiles(ORA ora, const char* name, ora_rectangle geometry, int format, int tile_size, tile_write_callback tile_source, ora_progress_callback callback);
 */
+
+extern int ora_render_document(ORA ora, ubyte** data);
 
 /** @brief Returns the error code of the last error encountered when dealing with a particular ORA document. 
  *

@@ -835,3 +835,131 @@ int ora_get_document_size(ORA ora, int* width, int* height) {
     return 0;
 }
 
+/* Composite a single RGB(A) pixel from src onto dest, taking into account
+ * the opacity of the layer that pixel is in. */
+_composite_pixel_over(ubyte* dest, ubyte* src, float opacity, int has_alpha) {
+    ubyte alpha;
+	if (has_alpha) alpha = src[3]*opacity;
+    else alpha = 0xFF*opacity;
+
+    if (dest[3] == 0 && alpha == 0) return;
+
+	ubyte k = 0xff * alpha / (0xff - (0xff-dest[3])*(0xff-alpha)/0xff);
+	dest[0] = ((0xff-k) * dest[0] + k * src[0]) / 0xff;
+	dest[1] = ((0xff-k) * dest[1] + k * src[1]) / 0xff;
+	dest[2] = ((0xff-k) * dest[2] + k * src[2]) / 0xff;
+}
+
+/* Composite the layer src onto dst, modifying only dst.
+ * dst must be a preallocated buffer of RGBA format with width dst_w and
+ * height dst_h */
+void _ora_composite_layer(ubyte *dst, int dst_w, int dst_h, ora_layer* layer) {
+    int src_w = layer->geometry.width;
+    int src_h = layer->geometry.height;
+    int y = layer->geometry.y;
+    int x = layer->geometry.x;
+    ubyte* src = layer->data;
+    int px_size;
+    int has_alpha = 0;
+
+    if ((layer->format & ORA_FORMAT_ALPHA) == ORA_FORMAT_ALPHA) {
+        px_size = 4;
+        has_alpha = 1;
+    }
+    else {
+        px_size = 3;
+        has_alpha = 0;
+    }
+
+	int i, j;
+	for (i = 0; i < src_h; i++) {
+		for (j = 0; j < src_w; j++) {
+			ubyte* s = src+(i*src_w+j)*px_size;
+            ubyte* d = dst+((i+y)*dst_w+j+x)*4; /* dst is always RGBA, 4 bytes */
+
+            ubyte alpha;
+            if (has_alpha) alpha=s[3];
+            else alpha=0xFF;
+            ubyte new_alpha = 0xff - (0xff-d[3]) * (0xff-alpha);
+
+            _composite_pixel_over(d, s, layer->opacity, has_alpha);
+            d[3] = new_alpha;
+        }
+    }
+}
+
+
+/* Return the number of layers in the document.
+ * NOTE: currently only counts top-level layers, not layer stacks or layers 
+ * in layer stacks */
+int _ora_get_number_of_layers(ORA ora) {
+    int number_of_layers = 0;
+    while (ora_stack_next(ora, ORA_NEXT_NO_STACK) > 0) {
+        number_of_layers++;
+    }
+    ora_stack_reset(ora);
+
+    return number_of_layers;
+}
+
+/* Return a NULL terminated array of pointers to the layers in the document,
+ * or NULL on failure. The first layer in the array is the bottom layer.
+ *
+ * This function will actually read in the pixel data for each layer, so it is a
+ * costly operation. This is a work-around for the fact that libora does not provide
+ * a way to get the layers in this order via the ora_stack_* functions. */
+ora_layer** _ora_get_layers_bottom_up(ORA ora) {
+    int number_of_layers = _ora_get_number_of_layers(ora);
+
+    size_t layers_size = sizeof(ora_layer*)*(number_of_layers+1);
+    ora_layer** layers = malloc(layers_size);
+    memset(layers, 0, layers_size);
+
+    layers[number_of_layers] = NULL;
+    int i = number_of_layers-1;
+    /* XXX: for correct operation this loop must correspond to the one in
+     * _ora_get_number_of_layers() */
+    while (ora_stack_next(ora, ORA_NEXT_NO_STACK) > 0) {
+        ora_layer *layer = malloc(sizeof(ora_layer));
+        if (ora_read_layer(ora, layer, NULL)) {
+            free(layer);
+            free(layers);
+            return NULL;
+        }
+        layers[i--] = layer;
+    }
+    return layers;
+}
+
+/* Render the OpenRaster document into a single-layer image.
+ * data is set to point to the newly allocated 8bpp RGBA image.
+ * It is the callers responsibilility to free data. */
+int ora_render_document(ORA ora, ubyte** data) {
+    int image_width, image_height;
+    ora_layer** layers;
+
+    ora_get_document_size(ora, &image_width, &image_height);
+
+    /* Allocate and initialize the full image (format: 8bpp RGBA) */
+    size_t image_size = image_width*image_height*4;
+    ubyte* image = malloc(image_size);
+    memset(image, 0xFF, image_size);
+
+    layers = _ora_get_layers_bottom_up(ora);
+
+    /* Composite each visible layer onto full image */
+    int i = 0;
+    while (layers[i]) {
+        if (layers[i]->visibility == ORA_VISIBILITY_VISIBLE) {
+            _ora_composite_layer(image, image_width, image_height, layers[i]);
+        }
+        free(layers[i]->data);
+        free(layers[i]);
+        i++;
+    }
+
+    free(layers);
+    *data = image;
+    return 0;
+}
+
