@@ -127,10 +127,7 @@ void tool_progress_callback(int progress)
 int main( int argc, char** argv) { 
     char filename[256];
     ORA ora_in, ora_out;
-    ubyte* image;
-    int format;
-    ora_rectangle geometry;
-    float opacity;
+    ora_layer layer;
     int i;
     long timer, total, read, write;
 
@@ -159,8 +156,8 @@ int main( int argc, char** argv) {
             printf("Reading layer: %d - ", i);
 
             timer = clock();
-            image = NULL;
-            ora_read_layer(ora_in, &image, &geometry, &format, &opacity, tool_progress_callback);
+            layer.data = NULL;
+            ora_read_layer(ora_in, &layer, tool_progress_callback);
 
             timer = clock() - timer;
             timer = timer > 0 ? timer : 0;
@@ -173,15 +170,16 @@ int main( int argc, char** argv) {
             printf("Writing layer: %d - ", i);
 
             timer = clock();
-            ora_write_layer(ora_out, NULL, geometry, format, opacity, image, tool_progress_callback);
+            ora_write_layer(ora_out, NULL, layer.geometry, layer.format, layer.opacity, 
+                layer.data, tool_progress_callback);
 
             timer = clock() - timer;
             timer = timer > 0 ? timer : 0;
             printf("\nDone (%ld ms)\n", (timer / (CLOCKS_PER_SEC / 1000)));
             write += timer;
 
-            if (image)
-                free(image);
+            if (layer.data)
+                free(layer.data);
         } else 
             break;
     }

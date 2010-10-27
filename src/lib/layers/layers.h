@@ -40,14 +40,11 @@
  *
  * @param document  the document
  * @param zip 	    the ZIP archive
- * @param data 	    the output parameter that will contain the data of the raster
- * @param width 	the output parameter that will contain the width of the raster
- * @param height 	the output parameter that will contain the height of the raster
- * @param format 	the output parameter that will contain the format of the raster
+ * @param layer     the layer to read data into
  * @param callback 	an optional callback function that can be used to retrieve progress information of the operation. 
  *
  */
-int ora_read_raster(ora_document* document, unzFile zip, ubyte** data, int* width, int* height, int* format, ora_progress_callback callback);
+int ora_read_raster(ora_document* document, unzFile zip, ora_layer* layer, ora_progress_callback callback);
 
 /**
  * @brief Internal function that handles writing the raster layer to the file.

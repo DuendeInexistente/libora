@@ -175,6 +175,14 @@ typedef struct _ora_rectangle
     int height; /**< height height of the layer */
 } ora_rectangle;
 
+typedef struct ora_layer ora_layer;
+struct ora_layer {
+    ubyte* data;
+    ora_rectangle geometry;
+    int format;
+    float opacity;
+};
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -230,13 +238,10 @@ extern int ora_stack_type(ORA ora);
  * If the current element in the stack is a raster layer this function reads its raw data. Only possible if the given document has been opened for reading.
  *
  * @param ora 	the document
- * @param data 	the output parameter that will contain the data of the layer
- * @param geometry 	the output parameter that will contain the geometry of the layer
- * @param format 	the output parameter that will contain the format of the layer
- * @param opacity 	the output parameter that will contain the opacity information of the layer
+ * @param layer the ora_layer to read the data into
  * @param callback 	the optional callback function that can be used to retrieve progress information of the operation. 
  */
-extern int ora_read_layer(ORA ora, ubyte** data, ora_rectangle* geometry, int* format, float* opacity, ora_progress_callback callback);
+extern int ora_read_layer(ORA ora, ora_layer* layer, ora_progress_callback callback);
 
 /** @brief Closes the given ORA document and frees allocated memory.
  *

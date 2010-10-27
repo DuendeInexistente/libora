@@ -601,7 +601,7 @@ extern int ora_stack_type(ORA ora)
 
 }
 
-extern int ora_read_layer(ORA ora, ubyte** data, ora_rectangle* geometry, int* format, float* opacity, ora_progress_callback callback)
+extern int ora_read_layer(ORA ora, ora_layer* layer, ora_progress_callback callback)
 {
     unz_file_info file_info;
     ora_document_read* read_struct;
@@ -657,20 +657,11 @@ extern int ora_read_layer(ORA ora, ubyte** data, ora_rectangle* geometry, int* f
         return ORA_ERROR;
     }
 
-    if (ora_read_raster((ora_document*)ora, zip, data, &(geometry->width), &(geometry->height), format, callback) < 0)
+    if (ora_read_raster((ora_document*)ora, zip, layer, callback) < 0)
     {
         ORA_SET_ERROR(ora, ORA_ERROR_READ);
         return ORA_ERROR;
     }
-
-    if (geometry) 
-    {
-        geometry->x = layer_data->bounds.x;
-        geometry->y = layer_data->bounds.y;
-    }
-
-    if (opacity)
-        *opacity = layer_data->opacity;
 
     if (unzCloseCurrentFile (zip) != UNZ_OK)
     {

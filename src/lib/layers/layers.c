@@ -76,7 +76,7 @@ void _ora_png_flush_data(png_structp png_ptr)
     //TODO: flushing
 }
 
-int ora_read_raster(ora_document* document, unzFile zip, ubyte** data, int* width, int* height, int* format, ora_progress_callback callback)
+int ora_read_raster(ora_document* document, unzFile zip, ora_layer* layer, ora_progress_callback callback)
 {
     png_structp png_ptr;
     png_infop info_ptr;
@@ -86,8 +86,10 @@ int ora_read_raster(ora_document* document, unzFile zip, ubyte** data, int* widt
     long image_size;
     int line_size;
     ubyte* image_data;
+    int width, height;
     int current_line;
     int current_progress = 0, p;
+
 /*
     FILE *fp = fopen(file_name, "rb");
     if (!fp)
@@ -154,8 +156,8 @@ png_set_sig_bytes(png_ptr, number);
     }
 
 
-    *width = png_get_image_width(png_ptr, info_ptr);
-    *height = png_get_image_height(png_ptr, info_ptr);
+    width = png_get_image_width(png_ptr, info_ptr);
+    height = png_get_image_height(png_ptr, info_ptr);
     bit_depth = png_get_bit_depth(png_ptr, info_ptr);
     color_type = png_get_color_type(png_ptr,info_ptr);
 
@@ -168,18 +170,18 @@ png_set_sig_bytes(png_ptr, number);
     if (png_get_valid(png_ptr, info_ptr, PNG_INFO_tRNS))
         png_set_tRNS_to_alpha(png_ptr);
 
-    line_size = (*width) * (bit_depth < 16 ? 1 : 2) * (color_type == PNG_COLOR_TYPE_RGBA ? 4 : 3);
-    image_size = line_size * (*height);
+    line_size = width * (bit_depth < 16 ? 1 : 2) * (color_type == PNG_COLOR_TYPE_RGBA ? 4 : 3);
+    image_size = line_size * height;
 
     image_data = (ubyte*) malloc(sizeof(ubyte) * image_size);
 
-    for (current_line = 0; current_line < *height; current_line++)
+    for (current_line = 0; current_line < height; current_line++)
     {
         png_read_row(png_ptr, image_data + line_size * current_line, NULL);
 
         if (callback)
         {
-            p = (current_line * 100) / (*height - 1);
+            p = (current_line * 100) / (height - 1);
             if (current_progress != p) 
             {
                 callback(p);
@@ -206,8 +208,11 @@ png_set_sig_bytes(png_ptr, number);
         return ORA_ERROR;
     }
 
-    *data = image_data;
-    *format = ORA_FORMAT_RASTER | (color_type == PNG_COLOR_TYPE_RGBA ? ORA_FORMAT_ALPHA : 0) | (bit_depth < 16 ? 0 : ORA_FORMAT_DOUBLE);
+    /* Set ouput variables */
+    layer->geometry.width = width;
+    layer->geometry.height = height;
+    layer->data = image_data;
+    layer->format = ORA_FORMAT_RASTER | (color_type == PNG_COLOR_TYPE_RGBA ? ORA_FORMAT_ALPHA : 0) | (bit_depth < 16 ? 0 : ORA_FORMAT_DOUBLE);
 
     return ORA_OK;
 }
