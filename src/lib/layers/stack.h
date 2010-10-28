@@ -50,6 +50,7 @@ typedef struct
     char* name;
     char* src;
     float opacity;
+    int visibility;
 } _ora_stack_layer;
 
 typedef struct _ora_stack_node_d

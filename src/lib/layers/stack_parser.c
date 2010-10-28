@@ -3,7 +3,7 @@
  * OpenRaster stack XML parser
  * Generated with genesx alpha
  *
- * This is an auto-generated file! Do not edit!
+ * **** This is an auto-generated file! Do not edit! ****
  *
  */
 #include <stdlib.h>
@@ -467,6 +467,8 @@ void _stack_layer_handle(stack_state* state, const XML_Char *name, const XML_Cha
 
         float arg_opacity = 0;
 
+        XML_Char* arg_visibility = NULL;
+
 
         if (_stack_hasarg(atts, "x"))
         {
@@ -492,8 +494,12 @@ void _stack_layer_handle(stack_state* state, const XML_Char *name, const XML_Cha
         {
             arg_opacity  = _stack_get_float(atts, "opacity");
         } 
+        if (_stack_hasarg(atts, "visibility"))
+        {
+            arg_visibility  = (XML_Char*) _stack_get_string(atts, "visibility");
+        } 
 
-    state->userData = stack_layer_handle_open(state->userData , arg_x  , arg_y  , arg_name  , arg_src  , arg_opacity  );
+    state->userData = stack_layer_handle_open(state->userData , arg_x  , arg_y  , arg_name  , arg_src  , arg_opacity  , arg_visibility  );
 }
 
 

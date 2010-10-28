@@ -208,7 +208,7 @@ png_set_sig_bytes(png_ptr, number);
         return ORA_ERROR;
     }
 
-    /* Set ouput variables */
+    /* Set output variables */
     layer->geometry.width = width;
     layer->geometry.height = height;
     layer->data = image_data;

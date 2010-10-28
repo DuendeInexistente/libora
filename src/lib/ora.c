@@ -669,6 +669,7 @@ extern int ora_read_layer(ORA ora, ora_layer* layer, ora_progress_callback callb
         return ORA_ERROR;
     }
 
+    layer->visibility = layer_data->visibility;
 
     return ORA_OK;
 }

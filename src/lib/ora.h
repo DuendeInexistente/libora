@@ -154,6 +154,9 @@
 /// @brief 	Raster format also contains an alpha channel. 
 #define ORA_FORMAT_ALPHA 512
 
+#define ORA_VISIBILITY_HIDDEN 0
+#define ORA_VISIBILITY_VISIBLE 1
+
 typedef char ubyte;
 
 /// @brief Reference to a ORA document. 
@@ -181,6 +184,7 @@ struct ora_layer {
     ora_rectangle geometry;
     int format;
     float opacity;
+    int visibility;
 };
 
 #ifdef __cplusplus

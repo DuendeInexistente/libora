@@ -48,6 +48,7 @@ layer.add_argument("y", "int", False)
 layer.add_argument("name", "text", False)
 layer.add_argument("src", "text", True)
 layer.add_argument("opacity", "float", False)
+layer.add_argument("visibility", "text", False)
 
 elements = {"_start": start, "image" : image, "stack" : stack, "layer" : layer}
 

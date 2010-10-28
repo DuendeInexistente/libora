@@ -3,7 +3,7 @@
  * OpenRaster stack XML parser
  * Generated with genesx alpha
  *
- * This is an auto-generated file! Do not edit!
+ * **** This is an auto-generated file! Do not edit! ****
  *
  */
 
@@ -16,7 +16,7 @@ void* stack_image_handle_open(void *userData , int arg_w  , int arg_h  , const X
 void* stack_image_handle_close(void *userData, XML_Char* text);
 void* stack_stack_handle_open(void *userData , int arg_x  , int arg_y  , const XML_Char* arg_name  );
 void* stack_stack_handle_close(void *userData, XML_Char* text);
-void* stack_layer_handle_open(void *userData , int arg_x  , int arg_y  , const XML_Char* arg_name  , const XML_Char* arg_src  , float arg_opacity  );
+void* stack_layer_handle_open(void *userData , int arg_x  , int arg_y  , const XML_Char* arg_name  , const XML_Char* arg_src  , float arg_opacity  , const XML_Char* arg_visibility  );
 void* stack_layer_handle_close(void *userData, XML_Char* text);
 
 #endif 

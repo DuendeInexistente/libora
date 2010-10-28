@@ -133,7 +133,8 @@ void* stack_stack_handle_close(void *userData, XML_Char* text)
     return state;
 }
 
-void* stack_layer_handle_open(void *userData , int arg_x  , int arg_y  , const XML_Char* arg_name  , const XML_Char* arg_src  , float arg_opacity  )
+void* stack_layer_handle_open(void *userData, int arg_x, int arg_y, const XML_Char* arg_name,
+                                const XML_Char* arg_src, float arg_opacity, const XML_Char* arg_visibility)
 {
     _ora_parser_state* state = (_ora_parser_state*) userData;
 
@@ -167,6 +168,13 @@ void* stack_layer_handle_open(void *userData , int arg_x  , int arg_y  , const X
     stack->name = clone_xml_string(arg_name);
     stack->src = clone_xml_string(arg_src);
     stack->opacity = arg_opacity;
+
+    if (arg_visibility && strcmp(arg_visibility, "hidden") == 0) {
+        stack->visibility = ORA_VISIBILITY_HIDDEN;
+    }
+    else {
+        stack->visibility = ORA_VISIBILITY_VISIBLE;
+    }
 
     node->data = stack;
 
