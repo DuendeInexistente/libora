@@ -190,16 +190,16 @@ void* stack_layer_handle_close(void *userData, XML_Char* text)
 
 void _ora_free_stack(_ora_stack_node* node) 
 {
-    _ora_stack_node* child;
-
     if (!node)
         return;
 
-    for (child = node->children; child; child = child->sibling) 
+    _ora_stack_node* child = node->children;
+    while (child)
     {
+        _ora_stack_node* next = child->sibling;
         _ora_free_stack(child);
+        child = next;
     }
-
     node->children = NULL;
 
     if (node->data)
