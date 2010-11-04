@@ -931,9 +931,6 @@ ora_layer** _ora_get_layers_bottom_up(ORA ora) {
     return layers;
 }
 
-/* Render the OpenRaster document into a single-layer image.
- * data is set to point to the newly allocated 8bpp RGBA image.
- * It is the callers responsibilility to free data. */
 int ora_render_document(ORA ora, ubyte** data) {
     int image_width, image_height;
     ora_layer** layers;

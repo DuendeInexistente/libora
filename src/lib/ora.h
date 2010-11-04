@@ -178,13 +178,14 @@ typedef struct _ora_rectangle
     int height; /**< height height of the layer */
 } ora_rectangle;
 
+/// @brief Represents a layer in an OpenRaster document.
 typedef struct ora_layer ora_layer;
 struct ora_layer {
-    ubyte* data;
-    ora_rectangle geometry;
-    int format;
-    float opacity;
-    int visibility;
+    ubyte* data; /**< data array for the layer. Format determined by the format attribute.  */
+    ora_rectangle geometry; /**< The geometry of the layer.  */
+    int format; /**< Format of the layer. See ORA_FORMAT_*  */
+    float opacity; /**< Opacity of the layer. 0 means fully transparent and 1.0 fully opaque.  */
+    int visibility; /**< Visibility of the layer. See ORA_VISIBILITY_* */
 };
 
 #ifdef __cplusplus
@@ -288,6 +289,11 @@ extern int ora_write_layer(ORA ora, const char* name, ora_rectangle geometry, in
 extern int ora_write_tiles(ORA ora, const char* name, ora_rectangle geometry, int format, int tile_size, tile_write_callback tile_source, ora_progress_callback callback);
 */
 
+/** @brief Render the OpenRaster document into a single-layer image.
+ *
+ * @param data  output argument set to point to the newly allocated 8bpp RGBA image.
+ *
+ * It is the callers responsibilility to free data. */
 extern int ora_render_document(ORA ora, ubyte** data);
 
 /** @brief Returns the error code of the last error encountered when dealing with a particular ORA document. 
