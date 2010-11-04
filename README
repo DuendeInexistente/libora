@@ -1,0 +1,36 @@
+libora is meant to be a reference library to help implementation of the
+OpenRaster file format: http://create.freedesktop.org/wiki/OpenRaster
+
+Status: Immature, under development
+License: Simplified BSD (2 clause)
+
+== CONTACT ==
+create@lists.freedesktop.org
+
+== INSTALLING ==
+libora uses the cmake build system. To install:
+
+cmake -DCMAKE_INSTALL_PREFIX:PATH=/installation/path .
+make
+make install
+
+== TODO ==
+ - Don't put a white background on rendered images
+ - Add ability to open a FILE*, file descriptor and/or memory buffer
+ - Add "stack" API for going backwards through the layers
+ - Allow one to get layer information (like opacity, position) without reading out the layer data
+ - Support incremental rendering of the full-document image
+ - Provide a ora2png binary that allows one to convert OpenRaster files to PNG
+
+Proposed style/correctness/best-practices fixes
+ - Get rid of _ prefixed symbols, they are reserved for C implementations
+ - Use enums for enumerated values (ex: ORA_FORMAT_*)
+ - Don't typedef standard types, it typically gives no benefit
+ - Use a distinct naming convention for types, it increases readability. Suggestion: CamelCasedType
+ - Don't typedef things to void*, it reduces type safety (ex: ORA)
+ - Put external code outside the main source directory (ex: oratool, zip, parser generator). Rename src to libora?
+ - Don't use a nested directory structure when there only a few files in each dir
+ - Consolidate the different ora_document* types, the duplication is error prone
+ - Don't use positional arguments for individial data where the amount of data might change (ex: ora_layer_write())
+ - Get rid of the ORA_FILE_READ_NO_STACK, just read the stack on-demand when neccesary (and preferably only the parts neccesary)
+
