@@ -1,5 +1,5 @@
 libora is meant to be a reference library to help implementation of the
-OpenRaster file format: http://create.freedesktop.org/wiki/OpenRaster
+OpenRaster file format: http://openraster.org
 
 Status: Immature, under development
 License: Simplified BSD (2 clause)
@@ -15,6 +15,7 @@ make
 make install
 
 == TODO ==
+ - Provide pkg-config files for the library
  - Don't put a white background on rendered images
  - Add ability to open a FILE*, file descriptor and/or memory buffer
  - Add "stack" API for going backwards through the layers
